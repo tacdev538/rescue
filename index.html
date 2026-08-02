@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TACNET Real-Time Command Grid</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Urbanist', sans-serif; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #010409; color: #fff; }
+
+        #map { width: 100vw; height: 100vh; z-index: 1; }
+
+        /* Control Panel Header */
+        #control-panel {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 12px 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        select, input, button {
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid #475569;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            outline: none;
+        }
+
+        button { background: #a3e635; color: #000; cursor: pointer; border: none; text-transform: uppercase; }
+        button:active { background: #84cc16; }
+
+        /* Custom Map Pins */
+        .custom-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 11px;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 12px rgba(0,0,0,0.8);
+            width: 32px !important;
+            height: 32px !important;
+            margin-left: -16px !important;
+            margin-top: -16px !important;
+        }
+
+        .blue-unit { background: #2563eb; }
+        .red-unit { background: #dc2626; }
+
+        #status-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(1, 4, 9, 0.85);
+            border: 1px solid #334155;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #a3e635;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="control-panel">
+        <select id="roleSelect">
+            <option value="blue">Law Enforcement (Blue)</option>
+            <option value="red">Search & Rescue (Red)</option>
+        </select>
+        
+        <input type="text" id="unitInput" placeholder="Unit # (e.g. 101)" style="width: 110px;">
+        
+        <button id="broadcastBtn">Start GPS</button>
+    </div>
+
+    <div id="status-bar">Status: Standby | Select Unit & Tap Start GPS</div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. YOUR FIREBASE CONFIGURATION
+        // ==========================================
+        // Replace the values below with your Firebase project credentials!
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const unitsRef = db.ref("tacnet_units");
+
+        // ==========================================
+        // 2. INITIALIZE MAP (AMHERST COUNTY DEFAULT)
+        // ==========================================
+        const map = L.map('map').setView([37.5857, -79.0514], 12); // Amherst, VA
+
+        // Dark Tactical Map Tiles
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            attribution: 'TACNET Tactical Command Grid'
+        }).addTo(map);
+
+        const markers = {};
+        let watchID = null;
+
+        // ==========================================
+        // 3. LISTEN FOR LIVE FIREBASE UPDATES
+        // ==========================================
+        unitsRef.on("value", (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            Object.keys(data).forEach(id => {
+                const unit = data[id];
+                if (!unit.lat || !unit.lng) return;
+
+                const pinClass = unit.role === 'red' ? 'red-unit' : 'blue-unit';
+                const customIcon = L.divIcon({
+                    className: `custom-pin ${pinClass}`,
+                    html: `<span>${unit.unitID || 'U'}</span>`
+                });
+
+                if (markers[id]) {
+                    // Smoothly move existing marker
+                    markers[id].setLatLng([unit.lat, unit.lng]);
+                    markers[id].setIcon(customIcon);
+                } else {
+                    // Create new unit marker on map
+                    markers[id] = L.marker([unit.lat, unit.lng], { icon: customIcon }).addTo(map)
+                        .bindPopup(`<b>Unit: ${unit.unitID}</b><br>Role: ${unit.role === 'red' ? 'Search & Rescue' : 'Law Enforcement'}`);
+                }
+            });
+        });
+
+        // ==========================================
+        // 4. GPS BROADCASTER (FOR FIELD PHONES)
+        // ==========================================
+        const broadcastBtn = document.getElementById('broadcastBtn');
+        const statusBar = document.getElementById('status-bar');
+
+        broadcastBtn.addEventListener('click', () => {
+            const unitID = document.getElementById('unitInput').value.trim();
+            const role = document.getElementById('roleSelect').value;
+
+            if (!unitID) {
+                alert("Please enter a Unit Number before starting GPS.");
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser.");
+                return;
+            }
+
+            if (watchID !== null) {
+                navigator.geolocation.clearWatch(watchID);
+                watchID = null;
+                broadcastBtn.innerText = "Start GPS";
+                broadcastBtn.style.background = "#a3e635";
+                statusBar.innerText = "Status: GPS Broadcast Stopped";
+                return;
+            }
+
+            statusBar.innerText = "Status: Acquiring GPS Fix...";
+
+            watchID = navigator.geolocation.watchPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    // Push position to Firebase Realtime Database
+                    unitsRef.child(unitID).set({
+                        unitID: unitID,
+                        role: role,
+                        lat: lat,
+                        lng: lng,
+                        lastUpdate: Date.now()
+                    });
+
+                    statusBar.innerText = `Status: Broadcasting Live GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+                    broadcastBtn.innerText = "Stop GPS";
+                    broadcastBtn.style.background = "#ef4444";
+                },
+                (error) => {
+                    console.error(error);
+                    statusBar.innerText = "Error: Allow Location Access in Phone Settings";
+                },
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+            );
+        });
+    </script>
+</body>
+</html>
