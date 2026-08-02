@@ -43,13 +43,13 @@
 
         .hero-header {
             width: 100%;
-            max-width: 900px;
+            max-width: 800px;
             border-radius: 12px;
             overflow: hidden;
             border: 2px solid var(--border-color);
             margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            position: relative;
+            background: #0f172a;
         }
 
         .hero-header img { width: 100%; height: auto; display: block; }
@@ -57,27 +57,27 @@
         .login-card {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
-            padding: 30px;
+            padding: 25px;
             border-radius: 12px;
             width: 100%;
             max-width: 500px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.9);
         }
 
-        .login-card h2 { color: var(--accent-lime); margin-bottom: 20px; text-transform: uppercase; text-align: center; font-size: 24px; letter-spacing: 1px; }
+        .login-card h2 { color: var(--accent-lime); margin-bottom: 15px; text-transform: uppercase; text-align: center; font-size: 22px; letter-spacing: 1px; }
 
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; font-weight: bold; }
         .form-control {
             width: 100%; background: #0f172a; border: 1px solid var(--border-color);
-            padding: 12px; border-radius: 6px; color: #fff; font-size: 15px; outline: none;
+            padding: 10px 12px; border-radius: 6px; color: #fff; font-size: 14px; outline: none;
         }
         .form-control:focus { border-color: var(--accent-lime); }
 
         .btn-primary {
             width: 100%; background: var(--accent-lime); color: #000; border: none;
             padding: 14px; border-radius: 6px; font-weight: 800; font-size: 16px;
-            cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; margin-top: 10px;
         }
         .btn-primary:hover { background: #84cc16; }
 
@@ -134,11 +134,11 @@
         }
         #map-legend h4 { font-size: 12px; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
         .legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
-        .legend-badge { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; border: 1px solid #fff; }
+        .legend-badge { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; border: 1px solid #fff; }
 
         /* MAP MARKERS */
         .unit-pin {
-            width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
             font-weight: 800; font-size: 11px; border: 2px solid #ffffff; box-shadow: 0 0 10px rgba(0,0,0,0.8);
         }
         .pin-sar { background: var(--sar-red); color: #000; }
@@ -163,7 +163,7 @@
         .report-header {
             display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px;
         }
-        .report-header h1 { font-size: 26px; color: #0f172a; text-transform: uppercase; font-weight: 800; }
+        .report-header h1 { font-size: 24px; color: #0f172a; text-transform: uppercase; font-weight: 800; }
         .report-header p { font-size: 12px; color: #475569; }
 
         .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
@@ -187,7 +187,7 @@
 
     <div id="login-overlay">
         <div class="hero-header">
-            <img src="GH.png" alt="TACNET Rescue Completed Header" onerror="this.src='https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80';">
+            <img src="GH.png" alt="TACNET Header" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80';">
         </div>
 
         <div class="login-card">
@@ -217,7 +217,7 @@
                 <input type="password" id="loginCode" class="form-control" placeholder="Enter Authorization Code">
             </div>
 
-            <button class="btn-primary" onclick="processLogin()">Initialize Tactical Grid</button>
+            <button class="btn-primary" type="button" onclick="processLogin()">Initialize Tactical Grid</button>
         </div>
     </div>
 
@@ -334,7 +334,7 @@
                     <tr><th>Time</th><th>Action Logged</th><th>Unit / Source</th><th>Status</th></tr>
                 </thead>
                 <tbody id="replayLogTable">
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </div>
@@ -342,9 +342,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // APP STATE
         let currentUser = { name: '', agency: '', role: '' };
-        let map, userMarker, trackingActive = false, watchID = null;
+        let map = null, userMarker = null, trackingActive = false, watchID = null;
         let isFreehand = false, isEraser = false, drawnItems = [];
         let incidentLogs = [];
 
@@ -378,7 +377,10 @@
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('app-container').style.display = 'block';
 
-            initMap();
+            setTimeout(() => {
+                initMap();
+            }, 200);
+
             logEvent('Grid Entry', `${name} (${agency}) logged in as ${role}`);
         }
 
@@ -388,16 +390,17 @@
         }
 
         function initMap() {
-            if (map) return;
+            if (map !== null) {
+                map.invalidateSize();
+                return;
+            }
 
-            // Default Amherst County / James River Grid
             map = L.map('map').setView([37.5857, -79.0514], 13);
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 maxZoom: 19, attribution: 'TACNET Tactical Command'
             }).addTo(map);
 
-            // Add Default Mock Units to Legend Demonstration
             addMockUnit(37.5880, -79.0530, 'R1', 'pin-sar', 'Search & Rescue Unit 1');
             addMockUnit(37.5840, -79.0490, 'E1', 'pin-ems', 'EMS Medical Squad');
             addMockUnit(37.5810, -79.0560, 'F1', 'pin-fire', 'Fire Engine 1');
@@ -406,12 +409,11 @@
             addMockUnit(37.5830, -79.0520, '<i class="fa-solid fa-person-swimming"></i>', 'pin-diver', 'Water Rescue Diver Team');
             addMockUnit(37.5857, -79.0514, '<i class="fa-solid fa-user-ninja"></i>', 'pin-victim', 'Victim Extrication Site');
 
-            // Map Click Drawing Support
             map.on('click', function(e) {
                 if (isFreehand) {
                     let circle = L.circle(e.latlng, { color: '#ef4444', fillColor: '#f87171', fillOpacity: 0.5, radius: 40 }).addTo(map);
                     drawnItems.push(circle);
-                    logEvent('Tactical Mark', `Red tactical area drawn at ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+                    logEvent('Tactical Mark', `Red area marked at ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
                 }
             });
         }
@@ -424,7 +426,6 @@
             L.marker([lat, lng], { icon: icon }).addTo(map).bindPopup(`<b>${title}</b>`);
         }
 
-        // REAL-TIME GPS TRACKING
         function toggleLiveGPS() {
             const btn = document.getElementById('gpsToggleBtn');
             if (!trackingActive) {
@@ -451,9 +452,9 @@
                         btn.classList.add('active');
                         btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> GPS Live';
                         trackingActive = true;
-                        logEvent('GPS Broadcast', `Live coordinates updated: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                        logEvent('GPS Broadcast', `Live coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
                     },
-                    (err) => { alert('Unable to acquire GPS lock. Please enable Location Services.'); },
+                    (err) => { alert('Unable to acquire GPS lock. Please allow location permissions in phone settings.'); },
                     { enableHighAccuracy: true }
                 );
             } else {
@@ -465,36 +466,28 @@
             }
         }
 
-        // ADDRESS SEARCH & PERIMETER RING
         function executeAddressSearch() {
             const query = document.getElementById('addressInput').value.trim();
             if (!query) return;
 
-            // Simulated Geocode / Location Pin Placement for Demo
             const demoLat = 37.5857 + (Math.random() - 0.5) * 0.02;
             const demoLng = -79.0514 + (Math.random() - 0.5) * 0.02;
 
             map.setView([demoLat, demoLng], 15);
 
-            // Red Dot Marker for Target Location
             const redTargetIcon = L.divIcon({
                 className: 'unit-pin pin-sar',
                 html: '<span><i class="fa-solid fa-bullseye"></i></span>'
             });
             L.marker([demoLat, demoLng], { icon: redTargetIcon }).addTo(map).bindPopup(`<b>Search Target:</b> ${query}`).openPopup();
 
-            // Tactical Perimeter Ring
             L.circle([demoLat, demoLng], {
-                color: '#ef4444',
-                fillColor: '#ef4444',
-                fillOpacity: 0.15,
-                radius: 300
+                color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, radius: 300
             }).addTo(map);
 
             logEvent('Perimeter Set', `Target Area set for '${query}' with 300m perimeter.`);
         }
 
-        // TACTICAL DRAWING & ERASER
         function toggleFreehand() {
             isFreehand = !isFreehand;
             isEraser = false;
@@ -511,7 +504,7 @@
             if (isEraser) {
                 drawnItems.forEach(item => map.removeLayer(item));
                 drawnItems = [];
-                logEvent('Tactical Eraser', 'Cleared tactical drawings from map overlay.');
+                logEvent('Tactical Eraser', 'Cleared drawings from map.');
                 alert('Tactical drawings cleared.');
                 isEraser = false;
                 document.getElementById('eraseBtn').classList.remove('active');
@@ -528,12 +521,11 @@
             logEvent('Article Logged', `Evidence marker dropped at ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`);
         }
 
-        // INCIDENT LIFECYCLE
         function terminateSearch() {
-            if (confirm("Are you sure you want to TERMINATE the active search operation? This will lock live feeds.")) {
+            if (confirm("Are you sure you want to TERMINATE the active search operation?")) {
                 if (watchID) navigator.geolocation.clearWatch(watchID);
                 trackingActive = false;
-                logEvent('SEARCH TERMINATED', 'Operational command terminated the search session.');
+                logEvent('SEARCH TERMINATED', 'Operational command terminated search session.');
                 alert('SEARCH TERMINATED. Grid locked.');
             }
         }
@@ -544,7 +536,6 @@
             }
         }
 
-        // LOGGING & REPORTING SYSTEM
         function logEvent(action, details) {
             const time = new Date().toLocaleTimeString();
             incidentLogs.push({ time, action, details });
@@ -583,4 +574,28 @@
         }
 
         function closeModal(id) {
-            document.getElementById(id).style.
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function previewReportImage(event) {
+            const container = document.getElementById('imagePreview');
+            container.innerHTML = '';
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    container.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; border-radius: 4px; border: 1px solid #cbd5e1;">`;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function emailReport() {
+            const email = prompt("Enter command recipient email address:", "command@amherstcounty.gov");
+            if (email) {
+                alert(`Official Incident Report queued for distribution to ${email}.`);
+            }
+        }
+    </script>
+</body>
+</html>
